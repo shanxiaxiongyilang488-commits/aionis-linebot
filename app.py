@@ -100,8 +100,14 @@ def pick(persona: str, intent: str, q: str) -> str:
     return random.choice(bucket).format(q=q)
 
 def generate_reply(user_text: str, persona: str) -> str:
-    intent = detect_intent(user_text)
-    return pick(persona, intent, user_text)
+    # 話す候補（なければデフォルトのキャラにフォールバック）
+    bucket = DIALOGUES.get(persona, DIALOGUES.get(DEFAULT_PERSONA, []))
+    if not bucket:
+        return user_text  # 候補が空なら入力をそのまま返す
+
+    template = random.choice(bucket)  # ← ここで毎回ランダム！
+    return template.format(user_text=user_text)
+
 
 # ==== LINE返信 ====
 async def reply_message(reply_token: str, text: str):
