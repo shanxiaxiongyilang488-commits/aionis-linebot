@@ -324,8 +324,7 @@ async def webhook(request: Request, x_line_signature: str = Header(None)):
             # --- 通常返信 ---
             persona = current_persona(user_id)
             intent = detect_intent(text)
-            reply = pick_by_intent(persona, intent, text)
-
+            reply  = generate_reply(text, persona, intent)   # ← こちらに統一
             # デバッグONならタグを付与
             if user_id in DEBUG_BY_USER:
                 reply = f"[persona={persona} | intent={intent}] " + reply
