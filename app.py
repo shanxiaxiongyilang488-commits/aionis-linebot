@@ -10,6 +10,33 @@ import re
 import random
 from collections import deque, defaultdict
 
+# === キャラ別セリフ集 ===
+DIALOGUES = {
+    "muryi": {
+        "greet": [
+            "おっはよ！ 今日の{user_text}、聞いてテンション爆上がり〜！",
+            "やっほー！来てくれてうれし〜！{user_text} から始めよっ！",
+            "こんにちは！ まずは深呼吸…よしっ、{user_text} からいこう！",
+        ],
+        "generic": [
+            "{user_text} 了解っ！ミュリイのセンサーが反応したよ〜♪",
+            "メモったよ！ 次は何する？",
+        ],
+    },
+    "piona": {
+        "greet": [
+            "よーし！{user_text} なら任せて！",
+            "こんにちは！ サクサク進めよう。{user_text} からスタート！",
+            "おつかれさま！リズム良くいくよ。まずは {user_text}！",
+        ],
+        "generic": [
+            "{user_text} 了解。いったん整理して動くね！",
+            "把握！一緒に片付けよう！",
+        ],
+    },
+}
+from collections import deque, defaultdict
+
 app = FastAPI()
 random.seed()
 
@@ -137,11 +164,9 @@ def detect_intent(t: str) -> str:
         return "cheer"
     if any(w in t for w in ["好き", "大好き", "すき", "love"]):
         return "love"
-    if any(w in t for w in ["おはよう", "こんにちは", "こんちは", "こんちゃ", "やっほー", "hi", "hello"]):
+    if re.search(r"(おはよう|こんにちは|こんにちわ|こんちゃ|やっほー|hi|hello)", t):
         return "greet"
-
-    return "generic"
-
+        
     return "generic"
 
 
@@ -335,7 +360,14 @@ async def webhook(request: Request, x_line_signature: str = Header(None)):
     # イベントがテキストでないなど
     return {"status": "ok"}
 # === 応答生成 ===
-def generate_reply(text: str, persona: str, intent: str = "generic", emotion: str = "neutral") -> str:
-    # とりあえずデバッグ用の仮実装
-    return f"[{persona} | {intent} | {emotion}] {text}"
+def generate_reply(text: str, persona: str, intent: str, emotion: str = "neutral") -> str:
+    # 1) キャラ別の意図バケットを取得
+    bucket = DIALOGUES.get(persona, {}).get(intent)
 
+    # 2) 無ければキャラ別 generic、さらに無ければ最後の保険
+    if not bucket:
+        bucket = DIALOGUES.get(persona, {}).get("generic", ["{user_text}"])
+
+    # 3) ランダムにテンプレを選んで差し込み
+    template = random.choice(bucket)
+    return template.format(user_text=text)
