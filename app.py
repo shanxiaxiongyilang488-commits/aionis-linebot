@@ -152,19 +152,19 @@ async def webhook(request: Request, x_line_signature: str = Header(None)):
             text = ev["message"]["text"].strip()
             user_id = ev.get("source", {}).get("userId", "unknown")
         
-            continue
+        
         # --- /debug on/off ハンドラ ---
         tlow = text.lower().strip()
 
         if tlow == "/debug on":
             DEBUG_BY_USER.add(user_id)
-            await reply_message(ev["replyToken"], "debug: ON（意図タグを表示します）")
-            continue
+            await reply_message(ev["replyToken"], "debug: ON (意図タグを表示します)")
+            return {"status": "ok"}
 
         if tlow == "/debug off":
             DEBUG_BY_USER.discard(user_id)
             await reply_message(ev["replyToken"], "debug: OFF")
-            continue
+            return {"status": "ok"}
 
             # ------------------------------
 
