@@ -11,6 +11,8 @@ random.seed()
 PERSONA_BY_USER = {}              # userId -> "muryi" / "piona"
 DEFAULT_PERSONA = "muryi"         # 初期キャラ
 
+
+
 def current_persona(user_id: str) -> str:
     return PERSONA_BY_USER.get(user_id, DEFAULT_PERSONA)
 
@@ -149,7 +151,25 @@ async def webhook(request: Request, x_line_signature: str = Header(None)):
         if ev.get("type") == "message" and ev["message"].get("type") == "text":
             text = ev["message"]["text"].strip()
             user_id = ev.get("source", {}).get("userId", "unknown")
+        
+            continue
+        # --- /debug on/off ハンドラ ---
+        tlow = text.lower().strip()
 
+        if tlow == "/debug on":
+            DEBUG_BY_USER.add(user_id)
+            await reply_message(ev["replyToken"], "debug: ON（意図タグを表示します）")
+            continue
+
+        if tlow == "/debug off":
+            DEBUG_BY_USER.discard(user_id)
+            await reply_message(ev["replyToken"], "debug: OFF")
+            continue
+
+            # ------------------------------
+
+
+            
             # --- コマンド（表記ゆれに少し強く）---
             low = text.lower().replace("：", ":").replace("　", " ").strip()
             if low in ("/set piona", "set:piona", "/piona"):
