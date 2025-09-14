@@ -14,9 +14,11 @@ from collections import deque, defaultdict
 DIALOGUES = {
     "muryi": {
         "greet": [
-            "おっはよ！ 今日の{user_text}、聞いてテンション爆上がり〜！",
-            "やっほー！来てくれてうれし〜！{user_text} から始めよっ！",
-            "こんにちは！ まずは深呼吸…よしっ、{user_text} からいこう！",
+  ("やっほ〜！", 2),   # ← 定番を少し出やすく
+  "こんにちは！",
+  "こんちゃ〜！"
+]
+
         ],
         "generic": [
             "{user_text} 了解っ！ミュリイのセンサーが反応したよ〜♪",
@@ -140,6 +142,27 @@ INTENT_RULES = [
 def detect_intent(text: str) -> str:
     t = text.lower()
 
+import random
+
+def choose_weighted(candidates):
+    """
+    candidates: ["テキスト", ("テキスト", 2), ...]
+    weight 省略時は1として扱う
+    """
+    if not candidates:
+        return ""
+    # 先頭がタプル/リストでなければ普通のchoice
+    if not isinstance(candidates[0], (list, tuple)):
+        return random.choice(candidates)
+    total = sum(w for _, w in candidates)
+    r = random.uniform(0, total)
+    upto = 0.0
+    for text, w in candidates:
+        upto += w
+        if upto >= r:
+            return text
+    return candidates[-1][0]
+
 
 def detect_intent(t: str) -> str:
     if any(w in t for w in ["ありがとう", "thanks", "thx"]):
@@ -172,6 +195,30 @@ def detect_intent(t: str) -> str:
 # === 台詞辞書（意図別：必要ならここを拡張） ===
 # ここでは最小にしておき、基本は DIALOGUES へフォールバック
 PHRASES = {
+    # --- キャラ口調（最小） ---
+PERSONA_TONE = {
+    "muryi": {
+        "you": "わたし",
+        "ender": {
+            "default": "！",
+            "greet":   "〜！",
+            "thanks":  "、ありがとっ☆",
+            "angry":   "（むーっ）",
+            "cheer":   "、いっしょにがんばろっ！",
+        }
+    },
+    "piona": {
+        "you": "ピオナ",
+        "ender": {
+            "default": "だよ。",
+            "greet":   "、やっほ〜！",
+            "thanks":  "、助かった！",
+            "angry":   "（ぷん）",
+            "cheer":   "、任せて！",
+        }
+    }
+}
+
     "muryi": {
         # ...（既存の thanks / greet / generic などは残す）
         "joke": [
@@ -360,13 +407,22 @@ async def webhook(request: Request, x_line_signature: str = Header(None)):
     return {"status": "ok"}
 # === 応答生成 ===
 def generate_reply(text: str, persona: str, intent: str, emotion: str = "neutral") -> str:
-    # 1) キャラ別の意図バケットを取得
-    bucket = DIALOGUES.get(persona, {}).get(intent)
+    # 1) バケット取得（なければ generic → 最後は保険）
+    persona_bucket = PHRASES.get(persona, {})
+    bucket = persona_bucket.get(intent) or persona_bucket.get("generic") or ["うん！"]
 
-    # 2) 無ければキャラ別 generic、さらに無ければ最後の保険
-    if not bucket:
-        bucket = DIALOGUES.get(persona, {}).get("generic", ["{user_text}"])
+    # 2) 重み付きで1つ選ぶ
+    reply = choose_weighted(bucket)
 
-    # 3) ランダムにテンプレを選んで差し込み
-    template = random.choice(bucket)
-    return template.format(user_text=text)
+    # 3) プレースホルダ展開（使っていれば）
+    try:
+        reply = reply.format(user_text=text)
+    except Exception:
+        pass
+
+    # 4) 口調（語尾）を軽く反映
+    tone  = PERSONA_TONE.get(persona, PERSONA_TONE["muryi"])
+    ender = tone["ender"].get(intent, tone["ender"]["default"])
+    reply = reply.replace("{you}", tone["you"]) + ender
+
+    return reply
