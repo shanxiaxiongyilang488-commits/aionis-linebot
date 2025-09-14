@@ -8,12 +8,17 @@ import base64
 import httpx
 import re
 import random
+from collections import deque, defaultdict
 
 app = FastAPI()
 random.seed()
 
 # === デバッグONユーザー集合（/debug on で追加、/debug off で除外） ===
 DEBUG_BY_USER = set()
+
+# === ユーザー状態と重複抑止 ===
+USER_STATE = defaultdict(lambda: {"mood": "normal", "style": "default"})
+LAST_SENT = defaultdict(lambda: deque(maxlen=5))  # 直近5件のテンプレを記録
 
 # === キャラ管理（ユーザーごと切替） ===
 PERSONA_BY_USER = {}                      # userId -> "muryi" / "piona"
@@ -44,7 +49,8 @@ INTENT_RULES = [
 def detect_intent(text: str) -> str:
     t = text.lower()
 
-    # 既存
+
+def detect_intent(t: str) -> str:
     if any(w in t for w in ["ありがとう", "thanks", "thx"]):
         return "thanks"
     if any(w in t for w in ["未来", "将来", "future"]):
@@ -55,20 +61,22 @@ def detect_intent(text: str) -> str:
         return "help"
     if any(w in t for w in ["疲れた", "しんどい", "休み"]):
         return "care"
-    if any(w in t for w in ["おはよう", "こんにちは", "やっほー", "hi", "hello"]):
-        return "greet"
-
-    # 追加（フェーズ2.0）
-    if any(w in t for w in ["ジョーク", "笑", "ｗ", "lol", "草"]):
-        return "joke"
-    if any(w in t for w in ["好き", "愛してる", "大好き", "love"]):
-        return "love"
     if any(w in t for w in ["ムカつく", "嫌い", "怒", "ぷんぷん"]):
         return "angry"
-    if any(w in t for w in ["勉強", "宿題", "仕事", "課題"]):
+    if any(w in t for w in ["勉強", "宿題", "仕事", "課題", "テスト", "受験"]):
         return "study"
-    if any(w in t for w in ["ばいばい", "またね", "おやすみ", "see you"]):
+    if any(w in t for w in ["ばいばい", "またね", "おやすみ", "さようなら", "バイ", "see you"]):
         return "bye"
+    if any(w in t for w in ["ジョーク", "冗談", "笑わせ", "笑って"]):
+        return "joke"
+    if any(w in t for w in ["がんばれ", "応援", "疲れた", "しんどい", "つらい"]):
+        return "cheer"
+    if any(w in t for w in ["好き", "大好き", "すき", "love"]):
+        return "love"
+    if any(w in t for w in ["おはよう", "こんにちは", "こんちは", "こんちゃ", "やっほー", "hi", "hello"]):
+        return "greet"
+
+    return "generic"
 
     return "generic"
 
