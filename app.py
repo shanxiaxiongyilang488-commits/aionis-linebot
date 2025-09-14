@@ -6,11 +6,11 @@ import random
 
 app = FastAPI()
 random.seed()
+DEBUG_BY_USER = set()  # ← 追加（デバッグ表示をONにしたユーザーIDの集合）
 
 # ==== キャラ管理（ユーザーごと切替）====
 PERSONA_BY_USER = {}              # userId -> "muryi" / "piona"
 DEFAULT_PERSONA = "muryi"         # 初期キャラ
-
 
 
 def current_persona(user_id: str) -> str:
@@ -154,16 +154,18 @@ async def webhook(request: Request, x_line_signature: str = Header(None)):
         
         
         # --- /debug on/off ハンドラ ---
-        tlow = text.lower().strip()
+    low = text.lower().replace("：", ":").replace("／", "/").replace("　", " ").strip()
 
-        if tlow == "/debug on":
-            DEBUG_BY_USER.add(user_id)
-            await reply_message(ev["replyToken"], "debug: ON (意図タグを表示します)")
-            continue
-        if tlow == "/debug off":
-            DEBUG_BY_USER.discard(user_id)
-            await reply_message(ev["replyToken"], "debug: OFF")
-            continue
+     if "/debug on" in low:
+        DEBUG_BY_USER.add(user_id)
+        await reply_message(ev["replyToken"], "debug: ON（意図タグを表示します）")
+        return {"status": "ok"}  # ← ここで確実に200を返して終わり
+
+    if "/debug off" in low:
+        DEBUG_BY_USER.discard(user_id)
+        await reply_message(ev["replyToken"], "debug: OFF")
+        return {"status": "ok"}  # ← ここで確実に200を返して終わり
+
 
             # ------------------------------
 
@@ -187,8 +189,13 @@ async def webhook(request: Request, x_line_signature: str = Header(None)):
 
             # --- 通常返信 ---
             persona = current_persona(user_id)
-            reply = generate_reply(text, persona)
-            await reply_message(ev["replyToken"], reply)
+            intent  = detect_intent(text)        # ← ここで意図を判定
+            reply   = generate_reply(text, persona)
 
-    return {"status": "ok"}
+            # デバッグONならタグを先頭に付ける
+            if user_id in DEBUG_BY_USER:
+            　　reply = f"[persona={persona} | intent={intent}] " + reply
+
+            await reply_message(ev["replyToken"], reply)
+            return {"status": "ok"}
 
