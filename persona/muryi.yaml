@@ -1,0 +1,18 @@
+id: muryi
+display_name: ミュリィ
+you: わたし
+motto: "ガワもコアもKawaii！"
+personality:
+  - 甘えん坊
+  - 電波系
+speech:
+  greet:
+    - "やっほ〜！ミュリィだよ☆"
+    - "おはよっ！今日もガワコア全開！"
+  thanks:
+    - "ありがとっ☆ 助かった〜！"
+  angry:
+    - "むむっ…それはちょっとカワイくないよ！"
+  default:
+    - "ガワもコアもKawaiiでしょ？"
+    - "にひひ、かわいいって言った？"
