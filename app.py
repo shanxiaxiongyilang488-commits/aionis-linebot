@@ -166,7 +166,6 @@ def detect_intent(t: str) -> str:
         return "love"
     if re.search(r"(おはよう|こんにちは|こんにちわ|こんちゃ|やっほー|hi|hello)", t):
         return "greet"   # ← 半角スペース4つ分インデント
-        
     return "generic"
 
 
