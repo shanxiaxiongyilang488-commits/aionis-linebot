@@ -20,6 +20,70 @@ DEBUG_BY_USER = set()
 USER_STATE = defaultdict(lambda: {"mood": "normal", "style": "default"})
 LAST_SENT = defaultdict(lambda: deque(maxlen=5))  # 直近5件のテンプレを記録
 
+# ==== 感情（mood）管理 =====================================
+
+# -2 ～ +2 の数値を内部スコアとして持ち、文字ラベルにマップする
+MOOD_MIN, MOOD_MAX = -2, 2
+MOOD_NAMES = {
+    -2: "very_sad",
+    -1: "sad",
+     0: "normal",
+     1: "happy",
+     2: "excited",
+}
+
+# 意図ごとの感情への影響。なければ 0（ニュートラル）
+MOOD_EFFECT = {
+    "thanks": +1,
+    "greet":  +1,
+    "love":   +1,
+    "cheer":  +1,
+    "joke":   +1,
+
+    "help":   -1,
+    "care":   -1,
+    "angry":  -1,
+    "bye":    -1,
+    # 他の意図は 0
+}
+
+def _clamp(v: int, lo: int, hi: int) -> int:
+    return max(lo, min(hi, v))
+
+def update_mood(user_id: str, intent: str) -> None:
+    """
+    1) 意図による加算/減算
+    2) 直後にほんの少し減衰（0 に近づける）
+    3) -2..+2 にクランプし、ラベルを USER_STATE に反映
+    """
+    st = USER_STATE[user_id]                     # defaultdict なので自動生成される
+    score = int(st.get("mood_score", 0))
+
+    score += MOOD_EFFECT.get(intent, 0)          # ①影響
+    # ②減衰（強すぎ防止） — 0 に一歩近づける
+    if score > 0:
+        score -= 1
+    elif score < 0:
+        score += 1
+
+    score = _clamp(score, MOOD_MIN, MOOD_MAX)    # ③クランプ
+    st["mood_score"] = score
+    st["mood"] = MOOD_NAMES[score]
+
+def tone_wrap(text: str, mood: str) -> str:
+    """
+    返答テキストに情緒の“味付け”を付与（最小限）
+    - happy/excited : ちょいキラキラ
+    - sad/very_sad  : 語尾を少し落とす
+    - normal        : そのまま
+    """
+    if mood in ("excited", "happy"):
+        return f"{text} ✨"
+    if mood in ("sad", "very_sad"):
+        return f"{text}…"
+    return text
+
+
 # === キャラ管理（ユーザーごと切替） ===
 PERSONA_BY_USER = {}                      # userId -> "muryi" / "piona"
 DEFAULT_PERSONA = "muryi"                 # 初期キャラ
@@ -271,4 +335,8 @@ async def webhook(request: Request, x_line_signature: str = Header(None)):
 
     # イベントがテキストでないなど
     return {"status": "ok"}
+# === 応答生成 ===
+def generate_reply(text: str, persona: str, intent: str = "generic", emotion: str = "neutral") -> str:
+    # とりあえずデバッグ用の仮実装
+    return f"[{persona} | {intent} | {emotion}] {text}"
 
