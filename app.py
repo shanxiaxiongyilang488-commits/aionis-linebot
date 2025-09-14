@@ -88,10 +88,23 @@ DIALOGUES = {
 
 # ==== 意図検出 & 返答 ====
 def detect_intent(text: str) -> str:
-    for pat, intent in INTENT_RULES:
-        if re.search(pat, text, flags=re.IGNORECASE):
-            return intent
+    t = text.lower()
+
+    if any(w in t for w in ["ありがとう", "thanks", "thx"]):
+        return "thanks"
+    if any(w in t for w in ["未来", "将来", "future"]):
+        return "future"
+    if any(w in t for w in ["天気", "weather", "雨", "晴れ"]):
+        return "smalltalk_weather"
+    if any(w in t for w in ["助けて", "help", "どうする"]):
+        return "help"
+    if any(w in t for w in ["疲れた", "しんどい", "休み"]):
+        return "care"
+    if any(w in t for w in ["おはよう", "こんにちは", "やっほー", "hi", "hello"]):
+        return "greet"
+
     return "generic"
+
 
 def pick(persona: str, intent: str, q: str) -> str:
     bucket = PHRASES.get(persona, {}).get(intent)
