@@ -1,5 +1,15 @@
 
 # app.py --- Phase1 Known-Good (最小安定板)
+import os
+import yaml
+
+CHARACTOR_FILE = os.getenv("CHARACTOR_FILE", "personas/default.yaml")
+
+with open(CHARACTOR_FILE, "r", encoding="utf-8") as f:
+    persona_config = yaml.safe_load(f)
+
+
+
 from fastapi import FastAPI, Request, Header
 import os, hmac, hashlib, base64, httpx, re, random
 
