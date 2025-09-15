@@ -1,12 +1,22 @@
 
 # app.py --- Phase1 Known-Good (最小安定板)
-import os
-import yaml
+import os, yaml, logging
 
-CHARACTOR_FILE = os.getenv("CHARACTOR_FILE", "personas/default.yaml")
+CHAR_FILE = os.getenv("CHARACTER_FILE", "personas/muryi.yaml")
+PERSONA = {}
 
-with open(CHARACTOR_FILE, "r", encoding="utf-8") as f:
-    persona_config = yaml.safe_load(f)
+def load_persona(path: str):
+    global PERSONA
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            PERSONA = yaml.safe_load(f)
+        logging.info(f"[BOOT] Loaded persona: {path}")
+    except Exception as e:
+        logging.exception(f"[BOOT] Failed to load persona: {path} -> {e}")
+        PERSONA = {"name": "muryi", "style": "fallback"}  # 最低限のデフォルト
+
+# アプリ起動時に 1 回だけ実行
+load_persona(CHAR_FILE)
 
 
 
